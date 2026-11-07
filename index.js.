@@ -1,19 +1,33 @@
-const { default: makeWASocket, useMultiFileAuthState, disconnectReason } = require('@whiskeysockets/baileys');
+const http = require('http');
+
+// ==========================================
+// 🌐 WEB SERVER MINI (WAJIB UNTUK KUBERNETIX PORT 8080)
+// ==========================================
+http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Bot Guard ARVX 588 Aktif 24 Jam!');
+}).listen(process.env.PORT || 8080, () => {
+    console.log('🌐 Web Server Port 8080 siap menerima pengecekan server!');
+});
+
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const fs = require('fs');
 
 // ==========================================
-// ⚙️ KONFIGURASI UTAMA BOT ARVX 588 (VERSI FINAL TERLENGKAP)
+// ⚙️ KONFIGURASI UTAMA BOT ARVX 588
 // ==========================================
 const CONFIG = {
     botName: "TOTAL-GUARD ARVX 588",
+    botPhoneNumber: "79xxxxxxxxx",               // GANTI dengan nomor bot Rusia kamu (format angka saja tanpa +, contoh: 79123456789)
+    usePairingCode: true,                        // Set true agar muncul 8 digit kode di Logs Kubernetix (tanpa perlu scan kamera)
     groupLinkWhitelist: "IcECPgfBoCT0HT78QJxoyr", // Tautan grup resmi kamu
-    adminNumber: "+7 977 854-79-25@s.whatsapp.net",  // Nomor kamu sebagai Admin Utama
+    adminNumber: "628157159957@s.whatsapp.net",  // Nomor utama kamu sebagai Admin Pemilik Bot
     
     // Fitur Welcome & Goodbye
     welcomeOn: true,
     goodbyeOn: true,
-    welcomeMessage: `『  𝐈𝐍𝐓𝐑𝐎 𝐂𝐀𝐑測 — 𝐀𝐑𝐕𝐗 588  』
+    welcomeMessage: `『  𝐈𝐍𝐓𝐑𝐎 𝐂𝐀𝐑𝐃 — 𝐀𝐑𝐕𝐗 588  』
 
 Welcome to ARVX 588.
 
@@ -31,11 +45,11 @@ Tautan Resmi Grup: https://whatsapp.com`,
 
     goodbyeMessage: "Selamat tinggal *@user* 🕊️, terima kasih telah mampir di ARVX 588.",
 
-    // 🛡️ BENTENG PERTAHANAN TEKNIS MUTAKHIR (TANPA SENSOR KATA)
-    antiGroupStatus: true,   // ✅ BARU: Otomatis HAPUS jika ada anggota bikin Status di dalam grup
+    // 🛡️ BENTENG PERTAHANAN TEKNIS (TANPA SENSOR KATA)
+    antiGroupStatus: true,   // Otomatis HAPUS jika ada anggota bikin Status di dalam grup
     antiLink: true,          // Otomatis HAPUS & KICK jika kirim link luar / kartu undangan
     antiMediaBiasa: true,    // Otomatis HAPUS foto/video/file biasa (Kecuali 1x Lihat & Kontak)
-    maxTextLength: 1000,     // Batas maksimal panjang karakter chat agar tidak membuat lag
+    maxTextLength: 1000,     // Batas maksimal panjang karakter chat agar tidak lag
     
     // Fitur Anti-Spam Stiker
     maxStickerLimit: 3,      
@@ -46,7 +60,7 @@ Tautan Resmi Grup: https://whatsapp.com`,
     floodCooldown: 3000      // Rentang waktu pantau banjir chat (3 detik)
 };
 
-// Fungsi memuat & menyimpan blacklist permanen dari file laptop
+// Fungsi memuat & menyimpan blacklist permanen
 function loadBlacklist() {
     try {
         if (!fs.existsSync('blacklist.json')) fs.writeFileSync('blacklist.json', '[]');
@@ -69,8 +83,24 @@ async function startBot() {
     const sock = makeWASocket({
         auth: state,
         logger: pino({ level: 'silent' }),
-        printQRInTerminal: true
+        printQRInTerminal: !CONFIG.usePairingCode,
+        browser: ["Ubuntu", "Chrome", "20.0.04"]
     });
+
+    // Meminta 8 digit Pairing Code otomatis jika belum login
+    if (CONFIG.usePairingCode && !sock.authState.creds.registered) {
+        setTimeout(async () => {
+            try {
+                const cleanNumber = CONFIG.botPhoneNumber.replace(/[^0-9]/g, '');
+                const code = await sock.requestPairingCode(cleanNumber);
+                console.log(`\n========================================`);
+                console.log(`🔑 KODE TAUTAN WA ANDA: ${code}`);
+                console.log(`========================================\n`);
+            } catch (err) {
+                console.log('Gagal meminta Pairing Code, pastikan botPhoneNumber benar:', err.message);
+            }
+        }, 4000);
+    }
 
     sock.ev.on('creds.update', saveCreds);
 
@@ -81,7 +111,7 @@ async function startBot() {
         const { id, participants, action } = update;
 
         for (let num of participants) {
-            const userTag = `@${num.split('@')}`;
+            const userTag = `@${num.split('@')[0]}`;
 
             if (action === 'add') {
                 if (blacklist.has(num)) {
@@ -107,7 +137,7 @@ async function startBot() {
     // 🛡️ 2. FILTER PESAN MASUK & MODERASI TOTAL
     // ==========================================
     sock.ev.on('messages.upsert', async (m) => {
-        const msg = m.messages; 
+        const msg = m.messages[0]; 
         if (!msg || !msg.message || msg.key.fromMe) return;
 
         const from = msg.key.remoteJid;
@@ -121,10 +151,10 @@ async function startBot() {
 
         if (!isGroup) return;
 
-        const type = Object.keys(msg.message)[0]; // Ambil tipe pesan utama yang masuk
+        const type = Object.keys(msg.message)[0];
         const now = Date.now();
 
-        // 👑 RESTRIKSI KETAT: PERINTAH KHUSUS ADMIN UTAMA
+        // 👑 PERINTAH KHUSUS ADMIN UTAMA
         if (sender === CONFIG.adminNumber || msg.key.fromMe) {
             if (text === '.closegrup') {
                 await sock.groupSettingUpdate(from, 'announcement');
@@ -137,7 +167,7 @@ async function startBot() {
                 return;
             }
             if (text === '.cekblacklist') {
-                const list = Array.from(blacklist).map(num => `@${num.split('@')}`);
+                const list = Array.from(blacklist).map(num => `@${num.split('@')[0]}`);
                 await sock.sendMessage(from, { 
                     text: `📋 *Daftar Hitam Permanen ARVX 588:*\n\n${list.length > 0 ? list.join('\n') : 'Kosong'}`, 
                     mentions: Array.from(blacklist) 
@@ -146,11 +176,10 @@ async function startBot() {
             }
         }
 
-        // 🚨 BARU: DETEKSI ANTI-STATUS GRUP (Mencegah Anggota Mengirim/Membuat Status Cerita Grup)
+        // 🚨 DETEKSI ANTI-STATUS GRUP
         if (CONFIG.antiGroupStatus) {
-            // Dalam protokol WA, status grup biasanya dikirim dalam bentuk jenis pesan "grup status" atau instansi media khusus
-            if (type === 'groupStatusMessage' || msg.message.statusMessage || type === 'pollCreationMessageV3') {
-                await sock.sendMessage(from, { delete: msg.key }); // Langsung hapus status tersebut
+            if (type === 'groupStatusMessage' || msg.message.statusMessage) {
+                await sock.sendMessage(from, { delete: msg.key });
                 return;
             }
         }
@@ -165,7 +194,7 @@ async function startBot() {
             await sock.sendMessage(from, { delete: msg.key });
             blacklist.add(sender);
             saveBlacklist(blacklist);
-            await sock.sendMessage(from, { text: `🚨 *@${sender.split('@')}* otomatis di-KICK & BLACKLIST PERMANEN karena melakukan serangan spam/flood chat beruntun!`, mentions: [sender] });
+            await sock.sendMessage(from, { text: `🚨 *@${sender.split('@')[0]}* otomatis di-KICK & BLACKLIST PERMANEN karena melakukan serangan spam/flood chat beruntun!`, mentions: [sender] });
             await sock.groupParticipantsUpdate(from, [sender], 'remove');
             return;
         }
@@ -201,7 +230,7 @@ async function startBot() {
             await sock.sendMessage(from, { delete: msg.key });
             blacklist.add(sender);
             saveBlacklist(blacklist);
-            await sock.sendMessage(from, { text: `🚨 *@${sender.split('@')}* langsung di-KICK karena menyebarkan kartu undangan grup lain!`, mentions: [sender] });
+            await sock.sendMessage(from, { text: `🚨 *@${sender.split('@')[0]}* langsung di-KICK karena menyebarkan kartu undangan grup lain!`, mentions: [sender] });
             await sock.groupParticipantsUpdate(from, [sender], 'remove');
             return;
         }
@@ -209,20 +238,3 @@ async function startBot() {
         if (CONFIG.antiLink && (text.includes('http://') || text.includes('https://') || text.includes('wa.me/'))) {
             const isWhitelist = text.includes(CONFIG.groupLinkWhitelist);
             if (!isWhitelist) {
-                await sock.sendMessage(from, { delete: msg.key });
-                blacklist.add(sender);
-                saveBlacklist(blacklist);
-                await sock.sendMessage(from, { text: `🚨 *@${sender.split('@')}* otomatis di-KICK & BLACKLIST karena menyebarkan tautan luar terlarang!`, mentions: [sender] });
-                await sock.groupParticipantsUpdate(from, [sender], 'remove');
-                return;
-            }
-        }
-
-        // E. ANTI-MEDIA BIASA (KECUALI 1X LIHAT & KONTAK)
-        if (CONFIG.antiMediaBiasa) {
-            const mediaDilarang = ['imageMessage', 'videoMessage', 'documentMessage', 'audioMessage'];
-            if (mediaDilarang.includes(type)) {
-                const isViewOnce = msg.message.imageMessage?.viewOnce || msg.message.videoMessage?.viewOnce;
-                if (!isViewOnce) {
-                    await sock.sendMessage(from, { delete: msg.key });
-                    await sock.sendMessage(from, { 
