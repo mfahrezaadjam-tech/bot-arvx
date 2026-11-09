@@ -9,13 +9,12 @@ const qrcode = require('qrcode-terminal');
 const CONFIG = {
     botName: 'TOTAL-GUARD ARVX 588',
     groupLinkWhitelist: 'https://chat.whatsapp.com/IcECPgfBoCT0HT78QJxoyr?s=cl&p=a&mlu=4&ilr=4',
-    // DAFTAR PENGUASA UTAMA BOT (Semua nomor di sini punya hak akses penuh 100% setara)
     superAdmins: [
         '628157159957@s.whatsapp.net',  // Nomor Utama Kamu
         '6285731483913@s.whatsapp.net', // Admin Baru 1
         '6288271317372@s.whatsapp.net'  // Admin Baru 2
     ],
-    welcomeMessage: '『  𝐈𝐍𝐓𝐑Ｏ ＣＡＲＤ — ＡＲＶ𝐗 588  』\n\nWelcome to ARVX 588.\n\nHalo @user 👋 Selamat bergabung! Silakan isi kartu intro di atas ya.\nTautan Resmi Grup: https://chat.whatsapp.com/IcECPgfBoCT0HT78QJxoyr?s=cl&p=a&mlu=4&ilr=4',
+    welcomeMessage: '『  𝐈𝐍𝐓𝐑𝐎 𝐂𝐀𝐑Ｄ — ＡＲ𝐕𝐗 588  』\n\nWelcome to ARVX 588.\n\nHalo @user 👋 Selamat bergabung! Silakan isi kartu intro di atas ya.\nTautan Resmi Grup: https://chat.whatsapp.com/IcECPgfBoCT0HT78QJxoyr?s=cl&p=a&mlu=4&ilr=4',
     goodbyeMessage: 'Selamat tinggal *@user* 🕊️, terima kasih telah mampir di ARVX 588.',
     welcomeOn: true,       
     antiLink: true,
@@ -83,7 +82,6 @@ async function startBot() {
         }
     });
 
-    // WELCOME & GOODBYE
     sock.ev.on('group-participants.update', async (update) => {
         const { id, participants, action } = update;
         for (let num of participants) {
@@ -120,8 +118,9 @@ async function startBot() {
         const now = Date.now();
         const userTag = '@' + sender.split('@');
 
-        // NORMALISASI: Cek apakah pengirim terdaftar sebagai salah satu penguasa bot (Super Admin)
-        const isSuperAdmin = CONFIG.superAdmins.map(v => v.split('@')[0]).includes(sender.split('@')[0]);
+        const cleanSender = sender.split('@') + '@s.whatsapp.net';
+        const cleanAdmin = CONFIG.adminNumber.split('@') + '@s.whatsapp.net';
+        const isSuperAdmin = CONFIG.superAdmins.map(v => v.split('@')).includes(sender.split('@'));
 
         let isGroupAdmin = false;
         try {
@@ -130,12 +129,8 @@ async function startBot() {
             isGroupAdmin = participant?.admin === 'admin' || participant?.admin === 'superadmin';
         } catch (e) {}
 
-        // AKSES KONTROL PENUH: Berlaku sama bagi kamu dan 2 admin baru tersebut!
         const hasFullAccess = (isSuperAdmin || isGroupAdmin);
 
-        // ==========================================
-        // 👑 UTILITY PERINTAH KHUSUS ADMIN PENUH
-        // ==========================================
         if (hasFullAccess) {
             if (text === '.closegrup') {
                 await sock.groupSettingUpdate(from, 'announcement');
@@ -191,9 +186,6 @@ async function startBot() {
             }
         }
 
-        // ==========================================
-        // 🛡️ PERTAHANAN KETAT MODERASI OTOMATIS ANGGOTA BIASA
-        // ==========================================
         if (!hasFullAccess) {
             if (msg.message.extendedTextMessage?.contextInfo?.isForwarded || msg.message.imageMessage?.contextInfo?.isForwarded) {
                 await sock.sendMessage(from, { delete: msg.key });
@@ -205,12 +197,13 @@ async function startBot() {
             if (containsShortener) {
                 await sock.sendMessage(from, { delete: msg.key });
                 blacklist.add(sender); saveBlacklist();
-await sock.sendMessage(from, { text: 🚨 ${userTag} *Otomatis di-KICK & BLACKLIST karena menyebarkan link URL Shortener!*, mentions: [sender] });
-await sock.groupParticipantsUpdate(from, [sender], 'remove');
-return;
-}
-if (text.length > CONFIG.maxTextLength) {
-await sock.sendMessage(from, { delete: msg.key });
+                await sock.sendMessage(from, { text: `🚨 ${userTag} *Otomatis di-KICK & BLACKLIST karena menyebarkan link URL Shortener!*`, mentions: [sender] });
+                await sock.groupParticipantsUpdate(from, [sender], 'remove');
+                return;
+            }
+
+            if (text.length > CONFIG.maxTextLength) {
+                await sock.sendMessage(from, { delete: msg.key });
 blacklist.add(sender); saveBlacklist();
 await sock.sendMessage(from, { text: 🚨 ${userTag} *Banned & Kick otomatis karena terdeteksi mengirim teks Virtex berbahaya!*, mentions: [sender] });
 await sock.groupParticipantsUpdate(from, [sender], 'remove');
@@ -263,9 +256,6 @@ if (!isViewOnce) { await sock.sendMessage(from, { delete: msg.key }); return; }
 }
 }
 }
-// ==========================================
-// 🎮 MINI GAMES HIBURAN
-// ==========================================
 if (text === '.slot') {
 const slotIcons = ['🍊', '🍇', '🍒', '💎', '🔔', '7️⃣'];
 const x = slotIcons[Math.floor(Math.random() * slotIcons.length)];
