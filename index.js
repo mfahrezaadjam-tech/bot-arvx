@@ -168,7 +168,7 @@ async function startBot() {
                 return;
             }
             if (text.startsWith('.kick')) {
-                const mentioned = msg.message.extendedTextMessage?.contextInfo?.mentionedJid?.;
+                const mentioned = msg.message.extendedTextMessage?.contextInfo?.mentionedJid;
                 const target = mentioned || msg.message.extendedTextMessage?.contextInfo?.participant;
                 if (target) {
                     await sock.groupParticipantsUpdate(from, [target], 'remove');
