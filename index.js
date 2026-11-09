@@ -102,8 +102,10 @@ async function startBot() {
     });
 
     sock.ev.on('messages.upsert', async (m) => {
-        const msg = m.messages;
-        if (!msg || !msg.message || msg.key.fromMe) return;
+    // KUNCI SUKSES: Ambil indeks pertama [0] dari array pesan Baileys terbaru
+    if (!m.messages || m.messages.length === 0) return;
+    const msg = m.messages[0];
+    if (!msg.message || msg.key.fromMe) return;
 
         const from = msg.key.remoteJid;
         const isGroup = from.endsWith('@g.us');
