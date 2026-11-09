@@ -8,14 +8,14 @@ const qrcode = require('qrcode-terminal');
 // ==========================================
 const CONFIG = {
     botName: 'TOTAL-GUARD ARVX 588',
-    groupLinkWhitelist: 'IcECPgfBoCT0HT78QJxoyr',
+    groupLinkWhitelist: 'https://chat.whatsapp.com/IcECPgfBoCT0HT78QJxoyr?s=cl&p=a&mlu=4&ilr=4',
     // DAFTAR PENGUASA UTAMA BOT (Semua nomor di sini punya hak akses penuh 100% setara)
     superAdmins: [
         '628157159957@s.whatsapp.net',  // Nomor Utama Kamu
         '6285731483913@s.whatsapp.net', // Admin Baru 1
         '6288271317372@s.whatsapp.net'  // Admin Baru 2
     ],
-    welcomeMessage: '『  𝐈𝐍𝐓𝐑Ｏ ＣＡＲＤ — ＡＲＶ𝐗 588  』\n\nWelcome to ARVX 588.\n\nHalo @user 👋 Selamat bergabung! Silakan isi kartu intro di atas ya.\nTautan Resmi Grup: https://whatsapp.com',
+    welcomeMessage: '『  𝐈𝐍𝐓𝐑Ｏ ＣＡＲＤ — ＡＲＶ𝐗 588  』\n\nWelcome to ARVX 588.\n\nHalo @user 👋 Selamat bergabung! Silakan isi kartu intro di atas ya.\nTautan Resmi Grup: https://chat.whatsapp.com/IcECPgfBoCT0HT78QJxoyr?s=cl&p=a&mlu=4&ilr=4',
     goodbyeMessage: 'Selamat tinggal *@user* 🕊️, terima kasih telah mampir di ARVX 588.',
     welcomeOn: true,       
     antiLink: true,
