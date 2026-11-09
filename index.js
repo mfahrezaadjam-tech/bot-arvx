@@ -101,37 +101,43 @@ async function startBot() {
         }
     });
 
+       // ==========================================
+    // 🤖 PEMPROSES PESAN UTAMA (ANTI-LOGIKAL ERROR)
+    // ==========================================
     sock.ev.on('messages.upsert', async (m) => {
-    // KUNCI SUKSES: Ambil indeks pertama [0] dari array pesan Baileys terbaru
-    if (!m.messages || m.messages.length === 0) return;
-    const msg = m.messages[0];
-    if (!msg.message || msg.key.fromMe) return;
+        if (!m.messages || m.messages.length === 0) return;
+        const msg = m.messages[0];
+        if (!msg.message || msg.key.fromMe) return;
 
         const from = msg.key.remoteJid;
         const isGroup = from.endsWith('@g.us');
         
-        const rawSender = msg.key.participant || msg.key.remoteJid;
-        const sender = msg.key.senderPn || msg.key.participantAlt || rawSender;
-        const text = msg.message.conversation || msg.message.extendedTextMessage?.text || msg.message.imageMessage?.caption || msg.message.videoMessage?.caption || '';
+        // JALUR PALING AKURAT: Ambil ID murni lalu bersihkan karakter LID privasi jika ada
+        const rawSender = msg.key.participant || msg.key.remoteJid || '';
+        const sender = (msg.key.senderPn || msg.key.participantAlt || rawSender).split(':')[0].split('@')[0];
+        
+        const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || msg.message.imageMessage?.caption || msg.message.videoMessage?.caption || '').trim();
 
         if (!isGroup) return;
 
         const type = Object.keys(msg.message);
         const now = Date.now();
-        const userTag = '@' + sender.split('@');
+        const userTag = '@' + sender + '@s.whatsapp.net';
 
-        const cleanSender = sender.split('@') + '@s.whatsapp.net';
-        const cleanAdmin = CONFIG.adminNumber.split('@') + '@s.whatsapp.net';
-        const isSuperAdmin = CONFIG.superAdmins.map(v => v.split('@')).includes(sender.split('@'));
+        // Bersihkan daftar superAdmins agar pencocokan string 100% akurat
+        const cleanSuperAdmins = CONFIG.superAdmins.map(v => v.split('@')[0]);
+        const isSuperAdmin = cleanSuperAdmins.includes(sender);
 
         let isGroupAdmin = false;
         try {
             const groupMeta = await sock.groupMetadata(from);
-            const participant = groupMeta.participants.find(p => p.id === rawSender || p.id === sender);
+            const participant = groupMeta.participants.find(p => p.id.split('@')[0] === rawSender.split('@')[0] || p.id.split('@')[0] === sender);
             isGroupAdmin = participant?.admin === 'admin' || participant?.admin === 'superadmin';
         } catch (e) {}
 
+        // HAK AKSES TOTAL KENDALI ADMIN
         const hasFullAccess = (isSuperAdmin || isGroupAdmin);
+
 
         if (hasFullAccess) {
             if (text === '.closegrup') {
