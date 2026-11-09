@@ -101,34 +101,45 @@ async function startBot() {
         }
     });
 
-        // ==========================================
+           // ==========================================
     // 🤖 PEMPROSES PESAN UTAMA (100% ANTI-ERRORS)
     // ==========================================
     sock.ev.on('messages.upsert', async (m) => {
         if (!m.messages || m.messages.length === 0) return;
-        const msg = m.messages[0]; // Kunci Sukses: Ambil indeks pertama objek array pesan Baileys terbaru
+        
+        // AMBIL INDEKS PERTAMA ARRAY PESAN BAILEYS TERBARU
+        const msg = m.messages[0]; 
         if (!msg.message || msg.key.fromMe) return;
 
         const from = msg.key.remoteJid;
         const isGroup = from.endsWith('@g.us');
         
-        // JALUR AMAN: Ambil string identitas mentah pengirim
+        // JALUR AMAN: Ekstraksi angka nomor HP murni pengirim (Kebal LID Privasi WA)
         const rawSender = msg.key.participant || msg.key.remoteJid || '';
-        
-        // Ekstraksi angka nomor HP murni menggunakan nomor telepon asli (senderPn) atau ID mentah
         const senderNumber = (msg.key.senderPn || rawSender).replace(/[^0-9]/g, '');
         const sender = senderNumber + '@s.whatsapp.net';
         
-        // Ambil isi teks pesan masuk secara bersih
-        const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || msg.message.imageMessage?.caption || msg.message.videoMessage?.caption || '').trim();
+        // KUNCI SUKSES: Ekstraksi Teks Berlapis-lapis untuk Menangkap Perintah Titik dari Segala Jenis HP
+        const msgContent = msg.message;
+        const text = (
+            msgContent.conversation || 
+            msgContent.extendedTextMessage?.text || 
+            msgContent.imageMessage?.caption || 
+            msgContent.videoMessage?.caption || 
+            msgContent.ephemeralMessage?.message?.extendedTextMessage?.text ||
+            msgContent.ephemeralMessage?.message?.conversation ||
+            msgContent.viewOnceMessage?.message?.imageMessage?.caption ||
+            msgContent.viewOnceMessage?.message?.videoMessage?.caption ||
+            ''
+        ).trim();
 
         if (!isGroup) return;
 
-        const type = Object.keys(msg.message)[0];
+        const type = Object.keys(msgContent);
         const now = Date.now();
         const userTag = '@' + senderNumber;
 
-        // COCOKKAN NOMOR: Ambil angka murni dari daftar Super Admin biar pencocokan 100% tembus
+        // Ambil angka murni dari daftar Super Admin untuk pencocokan string 100% akurat
         const cleanSuperAdmins = CONFIG.superAdmins.map(v => v.replace(/[^0-9]/g, ''));
         const isSuperAdmin = cleanSuperAdmins.includes(senderNumber);
 
