@@ -101,41 +101,45 @@ async function startBot() {
         }
     });
 
-       // ==========================================
-    // 🤖 PEMPROSES PESAN UTAMA (ANTI-LOGIKAL ERROR)
+        // ==========================================
+    // 🤖 PEMPROSES PESAN UTAMA (100% ANTI-ERRORS)
     // ==========================================
     sock.ev.on('messages.upsert', async (m) => {
         if (!m.messages || m.messages.length === 0) return;
-        const msg = m.messages[0];
+        const msg = m.messages[0]; // Kunci Sukses: Ambil indeks pertama objek array pesan Baileys terbaru
         if (!msg.message || msg.key.fromMe) return;
 
         const from = msg.key.remoteJid;
         const isGroup = from.endsWith('@g.us');
         
-        // JALUR PALING AKURAT: Ambil ID murni lalu bersihkan karakter LID privasi jika ada
+        // JALUR AMAN: Ambil string identitas mentah pengirim
         const rawSender = msg.key.participant || msg.key.remoteJid || '';
-        const sender = (msg.key.senderPn || msg.key.participantAlt || rawSender).split(':')[0].split('@')[0];
         
+        // Ekstraksi angka nomor HP murni menggunakan nomor telepon asli (senderPn) atau ID mentah
+        const senderNumber = (msg.key.senderPn || rawSender).replace(/[^0-9]/g, '');
+        const sender = senderNumber + '@s.whatsapp.net';
+        
+        // Ambil isi teks pesan masuk secara bersih
         const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || msg.message.imageMessage?.caption || msg.message.videoMessage?.caption || '').trim();
 
         if (!isGroup) return;
 
-        const type = Object.keys(msg.message);
+        const type = Object.keys(msg.message)[0];
         const now = Date.now();
-        const userTag = '@' + sender + '@s.whatsapp.net';
+        const userTag = '@' + senderNumber;
 
-        // Bersihkan daftar superAdmins agar pencocokan string 100% akurat
-        const cleanSuperAdmins = CONFIG.superAdmins.map(v => v.split('@')[0]);
-        const isSuperAdmin = cleanSuperAdmins.includes(sender);
+        // COCOKKAN NOMOR: Ambil angka murni dari daftar Super Admin biar pencocokan 100% tembus
+        const cleanSuperAdmins = CONFIG.superAdmins.map(v => v.replace(/[^0-9]/g, ''));
+        const isSuperAdmin = cleanSuperAdmins.includes(senderNumber);
 
         let isGroupAdmin = false;
         try {
             const groupMeta = await sock.groupMetadata(from);
-            const participant = groupMeta.participants.find(p => p.id.split('@')[0] === rawSender.split('@')[0] || p.id.split('@')[0] === sender);
+            const participant = groupMeta.participants.find(p => p.id.replace(/[^0-9]/g, '') === senderNumber);
             isGroupAdmin = participant?.admin === 'admin' || participant?.admin === 'superadmin';
         } catch (e) {}
 
-        // HAK AKSES TOTAL KENDALI ADMIN
+        // HAK AKSES TOTAL KENDALI ADMIN (Kamu dan 2 admin barumu)
         const hasFullAccess = (isSuperAdmin || isGroupAdmin);
 
 
@@ -217,12 +221,27 @@ await sock.sendMessage(from, { text: 🚨 ${userTag} *Banned & Kick otomatis kar
 await sock.groupParticipantsUpdate(from, [sender], 'remove');
 return;
 }
-if (type === 'stickerMessage') {
-let userStickers = stickerTracker.get(sender) || [];
-userStickers = userStickers.filter(timestamp => now - timestamp < CONFIG.stickerCooldown);
-userStickers.push(now); stickerTracker.set(sender, userStickers);
-if (userStickers.length > CONFIG.maxStickerLimit) { await sock.sendMessage(from, { delete: msg.key }); return; }
-}
+            // ============================================================
+            // 🛡️ BENTENG RADAR ANTI-STIKER PORNO & ANEH (MEMBER BIASA)
+            // ============================================================
+            if (type.includes('stickerMessage')) {
+                // Hapus instan stiker dari anggota biasa untuk mencegah penyebaran konten porno/vandal
+                await sock.sendMessage(from, { delete: msg.key });
+                
+                // Tambah Poin Peringatan (Warn) pelaku agar tidak mengulangi lagi
+                warnDatabase[sender] = (warnDatabase[sender] || 0) + 1;
+                saveWarnlist();
+                
+                if (warnDatabase[sender] >= CONFIG.maxWarnLimit) {
+                    blacklist.add(sender); saveBlacklist(); delete warnDatabase[sender]; saveWarnlist();
+                    await sock.sendMessage(from, { text: `🚨 ${userTag} *Otomatis di-KICK & BLACKLIST karena terus-menerus mengirim stiker ilegal/porno melanggar batas aturan grup!*`, mentions: [sender] });
+                    await sock.groupParticipantsUpdate(from, [sender], 'remove');
+                } else {
+                    await sock.sendMessage(from, { text: `⚠️ ${userTag} *Dilarang keras mengirim stiker di grup ini (Mencegah konten porno/vandal)!* Stiker Anda dihapus.\nWarn: *[${warnDatabase[sender]}/${CONFIG.maxWarnLimit}]*`, mentions: [sender] });
+                }
+                return;
+            }
+
 let userChats = floodTracker.get(sender) || [];
 userChats = userChats.filter(timestamp => now - timestamp < CONFIG.floodCooldown);
 userChats.push(now); floodTracker.set(sender, userChats);
